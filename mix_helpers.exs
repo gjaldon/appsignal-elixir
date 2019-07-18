@@ -97,6 +97,7 @@ defmodule Mix.Appsignal.Helper do
 
   defp download_and_compile(arch_config, report) do
     report = merge_report(report, %{download: %{checksum: "unverified"}})
+
     case download_package(arch_config, report) do
       {:ok, {filename, report}} ->
         case verify_download_package(filename, arch_config[:checksum], report) do
@@ -234,7 +235,7 @@ defmodule Mix.Appsignal.Helper do
 
   defp run_make do
     try do
-      System.cmd(make(), make_args(to_string(Mix.env())), [stderr_to_stdout: true])
+      System.cmd(make(), make_args(to_string(Mix.env())), stderr_to_stdout: true)
     rescue
       reason ->
         {inspect(reason), 1}
@@ -469,6 +470,7 @@ defmodule Mix.Appsignal.Helper do
         library_type: library_type
       }
     } = report
+
     %{
       download: %{
         download_url: download_url,
@@ -487,6 +489,7 @@ defmodule Mix.Appsignal.Helper do
         checksum: checksum || "unverified"
       }
     }
+
     write_report_file("download", download_report)
   end
 
@@ -494,12 +497,17 @@ defmodule Mix.Appsignal.Helper do
     # Write nothing if no download details are recorded in the report
   end
 
+  defp json_encoder do
+    Jason
+  end
+
   defp write_report_file(file, report) do
-    case Jason.encode(report) do
+    case json_encoder().encode(report) do
       {:ok, body} ->
         File.mkdir_p!(priv_dir())
 
         filename = "#{file}.report"
+
         case File.open(priv_path(filename), [:write]) do
           {:ok, file} ->
             result = IO.binwrite(file, body)
@@ -507,7 +515,10 @@ defmodule Mix.Appsignal.Helper do
             result
 
           {:error, reason} ->
-            Mix.Shell.IO.error("Error: Could not write AppSignal report file '#{file}'.\n#{reason}")
+            Mix.Shell.IO.error(
+              "Error: Could not write AppSignal report file '#{file}'.\n#{reason}"
+            )
+
             {:error, reason}
         end
 
